@@ -49,10 +49,7 @@ canvas { display: block; touch-action: none; }
 #start-screen p {
   font-size: 20px; color: #E8F5E9; margin-bottom: 40px; text-align: center; padding: 0 20px;
 }
-#dino-preview {
-  width: 220px; height: 200px; margin-bottom: 15px;
-  background: transparent;
-}
+#start-screen .dino-emoji { font-size: 80px; margin-bottom: 20px; }
 .btn {
   pointer-events: auto; cursor: pointer;
   background: #FF8F00; color: #fff; border: none; border-radius: 30px;
@@ -132,14 +129,14 @@ canvas { display: block; touch-action: none; }
 <body>
 
 <div id="start-screen">
-  <canvas id="dino-preview"></canvas>
+  <div class="dino-emoji">🦕</div>
   <h1>Jack's Dino Count!</h1>
   <p>Help Jack count the dinosaurs hiding in the meadow!</p>
   <button class="btn" onclick="startGame()">Let's Play!</button>
 </div>
 
 <div id="ui-overlay">
-  <div id="score-display">🦕 <span id="score">0</span> counted</div>
+  <div id="score-display">⭐ <span id="score">0</span> / <span id="total-stations">0</span></div>
   <div id="message-box"></div>
   <div id="count-display"></div>
   <div id="try-again-btns">
@@ -178,9 +175,9 @@ let currentStation = null;
 let dinosaurs = [];
 let dinoCount = 0;
 let countedSoFar = 0;
-let gamePhase = 'explore'; // explore, reveal, counting, celebrate
-let encounterNumber = 0;
-let totalDinosCounted = 0;
+let gamePhase = 'explore'; // explore, reveal, counting, celebrate, complete
+let stationsCompleted = 0;
+let totalStations = 0;
 let keys = {};
 const JACK_SPEED = 4.5;
 let raycaster = new THREE.Raycaster();
@@ -190,11 +187,6 @@ let jackAngle = 0;
 let jackBobTime = 0;
 let dinoClickables = [];
 let glowTime = 0;
-
-// World chunks
-const CHUNK_SIZE = 16;
-const chunks = new Map();
-let activeChunkKeys = new Set();
 
 // Virtual joystick state
 let joystickActive = false;
@@ -281,9 +273,13 @@ function updateJoystickThumb(touch, zone, thumb) {
 // TOUCH RAYCASTING (for tapping dinosaurs)
 // ═══════════════════════════════════════════
 function initTouchRaycast() {
+  // Listen for taps on the Three.js canvas
+  // We use 'touchend' so the finger has lifted = intentional tap
+  // We also track if the touch moved (to avoid counting swipes as taps)
   let touchStartPos = null;
 
   renderer.domElement.addEventListener('touchstart', (e) => {
+    // Don't intercept if touching the joystick area
     if (joystickTouchId !== null && e.touches.length > 1) return;
 
     const touch = e.changedTouches[0];
@@ -295,16 +291,19 @@ function initTouchRaycast() {
 
     const touch = e.changedTouches[0];
 
+    // Only count as tap if finger didn't move much (not a drag/swipe)
     if (touchStartPos) {
       const dx = touch.clientX - touchStartPos.x;
       const dy = touch.clientY - touchStartPos.y;
-      if (Math.sqrt(dx*dx + dy*dy) > 20) return;
+      if (Math.sqrt(dx*dx + dy*dy) > 20) return; // was a swipe, ignore
     }
 
+    // Convert touch position to normalized device coordinates
     mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
+    // Check tap on dinosaurs
     const clickTargets = [];
     dinosaurs.forEach(d => {
       d.group.traverse(child => {
@@ -336,6 +335,7 @@ function speak(text, rate = 0.85, pitch = 1.1) {
     utter.rate = rate;
     utter.pitch = pitch;
     utter.volume = 1;
+    // Try to find a friendly voice
     const voices = speechSynthesis.getVoices();
     const friendly = voices.find(v =>
       v.name.includes('Samantha') || v.name.includes('Karen') ||
@@ -345,6 +345,7 @@ function speak(text, rate = 0.85, pitch = 1.1) {
     if (friendly) utter.voice = friendly;
     utter.onend = resolve;
     utter.onerror = resolve;
+    // Safety timeout in case speech never fires onend (common on iOS)
     const safetyTimer = setTimeout(resolve, Math.max(3000, text.length * 80));
     utter.onend = () => { clearTimeout(safetyTimer); resolve(); };
     speechSynthesis.speak(utter);
@@ -408,7 +409,8 @@ function hideCount() {
   document.getElementById('count-display').style.display = 'none';
 }
 function updateScore() {
-  document.getElementById('score').textContent = totalDinosCounted;
+  document.getElementById('score').textContent = stationsCompleted;
+  document.getElementById('total-stations').textContent = totalStations;
 }
 function showTryAgainButtons() {
   document.getElementById('try-again-btns').style.display = 'block';
@@ -567,47 +569,6 @@ function createJack() {
   smile.position.set(0, 1.16, 0.245);
   smile.rotation.z = Math.PI;
   group.add(smile);
-
-  // Hexagonal hat with alternating blue and red panels
-  const hatY = 1.45;
-  const hatRadius = 0.19;
-  const hatHeight = 0.22;
-  const blueC = [0.15, 0.35, 0.9];
-  const redC = [0.88, 0.12, 0.12];
-
-  // Hat crown (hexagonal cylinder)
-  const crownGeo = new THREE.CylinderGeometry(hatRadius * 0.75, hatRadius, hatHeight, 6).toNonIndexed();
-  const crownPos = crownGeo.getAttribute('position');
-  const crownColors = new Float32Array(crownPos.count * 3);
-  for (let i = 0; i < crownPos.count; i++) {
-    const c = (i < 36)
-      ? ((Math.floor(i / 6) % 2 === 0) ? blueC : redC)
-      : ((Math.floor((i - 36) / 3) % 2 === 0) ? blueC : redC);
-    crownColors[i * 3] = c[0];
-    crownColors[i * 3 + 1] = c[1];
-    crownColors[i * 3 + 2] = c[2];
-  }
-  crownGeo.setAttribute('color', new THREE.BufferAttribute(crownColors, 3));
-  const crown = new THREE.Mesh(crownGeo, new THREE.MeshPhongMaterial({ vertexColors: true }));
-  crown.position.y = hatY;
-  group.add(crown);
-
-  // Hat brim (wider hexagonal disc)
-  const brimGeo = new THREE.CylinderGeometry(hatRadius * 1.4, hatRadius * 1.4, 0.03, 6).toNonIndexed();
-  const brimPos = brimGeo.getAttribute('position');
-  const brimColors = new Float32Array(brimPos.count * 3);
-  for (let i = 0; i < brimPos.count; i++) {
-    const c = (i < 36)
-      ? ((Math.floor(i / 6) % 2 === 0) ? redC : blueC)
-      : ((Math.floor((i - 36) / 3) % 2 === 0) ? redC : blueC);
-    brimColors[i * 3] = c[0];
-    brimColors[i * 3 + 1] = c[1];
-    brimColors[i * 3 + 2] = c[2];
-  }
-  brimGeo.setAttribute('color', new THREE.BufferAttribute(brimColors, 3));
-  const brim = new THREE.Mesh(brimGeo, new THREE.MeshPhongMaterial({ vertexColors: true }));
-  brim.position.y = hatY - hatHeight / 2;
-  group.add(brim);
 
   group.position.y = 0;
   return group;
@@ -774,58 +735,6 @@ function createGrassClump() {
   return group;
 }
 
-// ═══════════════════════════════════════════
-// CREATE CLUMP (mixed objects)
-// ═══════════════════════════════════════════
-function createClump(rng) {
-  const group = new THREE.Group();
-
-  // 1-2 small trees
-  const treeCount = rng() > 0.5 ? 2 : 1;
-  for (let i = 0; i < treeCount; i++) {
-    const tree = createTree(1.2 + rng() * 0.6);
-    const angle = (i / treeCount) * Math.PI * 2;
-    const dist = rng() * 1.0;
-    tree.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
-    tree.castShadow = true;
-    group.add(tree);
-  }
-
-  // 2-4 rocks
-  const rockCount = 2 + Math.floor(rng() * 3);
-  for (let i = 0; i < rockCount; i++) {
-    const rocks = createRockPile();
-    const angle = (i / rockCount) * Math.PI * 2 + rng() * 0.3;
-    const dist = 0.3 + rng() * 0.9;
-    rocks.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
-    rocks.castShadow = true;
-    group.add(rocks);
-  }
-
-  // 2-3 grass clumps
-  const grassCount = 2 + Math.floor(rng() * 2);
-  for (let i = 0; i < grassCount; i++) {
-    const grass = createGrassClump();
-    const angle = (i / grassCount) * Math.PI * 2 + rng() * 0.5;
-    const dist = 0.2 + rng() * 0.9;
-    grass.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
-    group.add(grass);
-  }
-
-  // 1-2 flowers
-  const flowerCount = rng() > 0.4 ? 2 : 1;
-  for (let i = 0; i < flowerCount; i++) {
-    const flowerMat = new THREE.MeshPhongMaterial({ color: [0xE91E63, 0xFFEB3B, 0x9C27B0, 0xFF5722][Math.floor(rng() * 4)] });
-    const flower = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), flowerMat);
-    const angle = (i / flowerCount) * Math.PI * 2 + rng() * 0.4;
-    const dist = 0.2 + rng() * 0.8;
-    flower.position.set(Math.cos(angle) * dist, 0.1, Math.sin(angle) * dist);
-    group.add(flower);
-  }
-
-  return group;
-}
-
 function createInteractionMarker() {
   const geo = new THREE.RingGeometry(1.3, 1.5, 24);
   const mat = new THREE.MeshBasicMaterial({ color: 0xFFEB3B, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
@@ -836,162 +745,12 @@ function createInteractionMarker() {
 }
 
 // ═══════════════════════════════════════════
-// CHUNK-BASED WORLD GENERATION
-// ═══════════════════════════════════════════
-function getChunkKey(chunkX, chunkZ) {
-  return chunkX + ',' + chunkZ;
-}
-
-function getChunkCoords(worldX, worldZ) {
-  return {
-    x: Math.floor(worldX / CHUNK_SIZE),
-    z: Math.floor(worldZ / CHUNK_SIZE)
-  };
-}
-
-function generateChunk(chunkX, chunkZ) {
-  const key = getChunkKey(chunkX, chunkZ);
-  if (chunks.has(key)) return chunks.get(key);
-
-  const chunkData = {
-    key: key,
-    x: chunkX,
-    z: chunkZ,
-    objects: [],
-    group: new THREE.Group()
-  };
-
-  // Seeded random for this chunk
-  const chunkSeed = chunkX * 73856093 ^ chunkZ * 19349663;
-  let rngState = chunkSeed;
-  const rng = () => {
-    rngState = (rngState * 1103515245 + 12345) % 2147483648;
-    return (rngState / 2147483648);
-  };
-
-  // Generate 1-2 stations (clumps) per chunk
-  const stationCount = rng() > 0.6 ? 2 : 1;
-  const usedPositions = [];
-
-  for (let i = 0; i < stationCount; i++) {
-    let stationX, stationZ, valid;
-    let attempts = 0;
-
-    do {
-      const localX = Math.floor(rng() * CHUNK_SIZE);
-      const localZ = Math.floor(rng() * CHUNK_SIZE);
-      stationX = chunkX * CHUNK_SIZE + localX;
-      stationZ = chunkZ * CHUNK_SIZE + localZ;
-
-      // Check minimum spacing (7 units)
-      valid = true;
-      for (let pos of usedPositions) {
-        const dist = Math.sqrt((stationX - pos.x) ** 2 + (stationZ - pos.z) ** 2);
-        if (dist < 7) {
-          valid = false;
-          break;
-        }
-      }
-      attempts++;
-    } while (!valid && attempts < 10);
-
-    if (valid) {
-      usedPositions.push({ x: stationX, z: stationZ });
-
-      const clump = createClump(rng);
-      clump.position.set(stationX, 0, stationZ);
-      chunkData.group.add(clump);
-
-      const marker = createInteractionMarker();
-      marker.position.set(stationX, 0.02, stationZ);
-      chunkData.group.add(marker);
-
-      chunkData.objects.push({
-        clump: clump,
-        marker: marker,
-        position: new THREE.Vector3(stationX, 0, stationZ),
-        completed: false,
-        dinoCount: (encounterNumber === 0) ? 10 : (1 + Math.floor(rng() * 10))
-      });
-    }
-  }
-
-  // Add dirt paths (decorative)
-  const pathCount = rng() > 0.5 ? 2 : 1;
-  for (let i = 0; i < pathCount; i++) {
-    const isHorizontal = rng() > 0.5;
-    let pathGeo, pathPos;
-
-    if (isHorizontal) {
-      pathGeo = new THREE.PlaneGeometry(CHUNK_SIZE, 1.0);
-      pathPos = new THREE.Vector3(chunkX * CHUNK_SIZE + CHUNK_SIZE / 2, 0.01, chunkZ * CHUNK_SIZE + Math.floor(rng() * CHUNK_SIZE));
-    } else {
-      pathGeo = new THREE.PlaneGeometry(1.0, CHUNK_SIZE);
-      pathPos = new THREE.Vector3(chunkX * CHUNK_SIZE + Math.floor(rng() * CHUNK_SIZE), 0.01, chunkZ * CHUNK_SIZE + CHUNK_SIZE / 2);
-    }
-
-    const pathMat = new THREE.MeshPhongMaterial({ color: 0xBCAAA4, transparent: true, opacity: 0.35 });
-    const path = new THREE.Mesh(pathGeo, pathMat);
-    path.rotation.x = -Math.PI / 2;
-    path.position.copy(pathPos);
-    chunkData.group.add(path);
-  }
-
-  scene.add(chunkData.group);
-  chunks.set(key, chunkData);
-  return chunkData;
-}
-
-function updateWorld() {
-  const chunkCoords = getChunkCoords(jack.position.x, jack.position.z);
-  const newActiveChunks = new Set();
-
-  // Generate 3x3 grid around Jack
-  for (let dx = -1; dx <= 1; dx++) {
-    for (let dz = -1; dz <= 1; dz++) {
-      const key = getChunkKey(chunkCoords.x + dx, chunkCoords.z + dz);
-      newActiveChunks.add(key);
-      if (!chunks.has(key)) {
-        generateChunk(chunkCoords.x + dx, chunkCoords.z + dz);
-      }
-    }
-  }
-
-  // Remove chunks that are too far away
-  for (let key of activeChunkKeys) {
-    if (!newActiveChunks.has(key)) {
-      const chunk = chunks.get(key);
-      if (chunk && chunk.group) {
-        scene.remove(chunk.group);
-      }
-      chunks.delete(key);
-    }
-  }
-
-  activeChunkKeys = newActiveChunks;
-
-  // Update station detection
-  if (gamePhase === 'explore') {
-    stations.forEach(station => {
-      if (station.completed) return;
-      const dist = jack.position.distanceTo(station.position);
-      if (dist < 1.8) {
-        enterStation(station);
-      }
-      if (dist < 4) {
-        station.marker.material.opacity = 0.25 + Math.sin(Date.now() * 0.005) * 0.15;
-      }
-    });
-  }
-}
-
-// ═══════════════════════════════════════════
 // SCENE SETUP
 // ═══════════════════════════════════════════
 function initScene() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87CEEB);
-  scene.fog = new THREE.FogExp2(0x87CEEB, 0.022);
+  scene.fog = new THREE.Fog(0x87CEEB, 25, 50);
   clock = new THREE.Clock();
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -1014,21 +773,40 @@ function initScene() {
   sun.shadow.mapSize.width = 1024;
   sun.shadow.mapSize.height = 1024;
   sun.shadow.camera.near = 0.5;
-  sun.shadow.camera.far = 100;
-  sun.shadow.camera.left = -50;
-  sun.shadow.camera.right = 50;
-  sun.shadow.camera.top = 50;
-  sun.shadow.camera.bottom = -50;
+  sun.shadow.camera.far = 50;
+  sun.shadow.camera.left = -15;
+  sun.shadow.camera.right = 15;
+  sun.shadow.camera.top = 15;
+  sun.shadow.camera.bottom = -15;
   scene.add(sun);
-  scene.userData.sun = sun;
 
-  // Ground (huge plane)
-  const groundGeo = new THREE.PlaneGeometry(500, 500);
+  // Ground
+  const groundGeo = new THREE.PlaneGeometry(60, 60);
   const groundMat = new THREE.MeshPhongMaterial({ color: 0x7CB342 });
   groundPlane = new THREE.Mesh(groundGeo, groundMat);
   groundPlane.rotation.x = -Math.PI / 2;
   groundPlane.receiveShadow = true;
   scene.add(groundPlane);
+
+  // Dirt patches
+  for (let i = 0; i < 15; i++) {
+    const patchGeo = new THREE.CircleGeometry(0.5 + Math.random() * 1, 8);
+    const patchMat = new THREE.MeshPhongMaterial({ color: 0x8D6E63, transparent: true, opacity: 0.3 });
+    const patch = new THREE.Mesh(patchGeo, patchMat);
+    patch.rotation.x = -Math.PI / 2;
+    patch.position.set((Math.random() - 0.5) * 25, 0.01, (Math.random() - 0.5) * 25);
+    scene.add(patch);
+  }
+
+  // Background trees
+  for (let i = 0; i < 25; i++) {
+    const tree = createTree(1.5 + Math.random() * 2);
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 15 + Math.random() * 12;
+    tree.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+    tree.castShadow = true;
+    scene.add(tree);
+  }
 
   // Sun
   const sunGeo = new THREE.SphereGeometry(2, 16, 16);
@@ -1037,11 +815,10 @@ function initScene() {
   sunMesh.position.set(10, 18, -15);
   scene.add(sunMesh);
 
-  // Clouds (will wrap)
-  const cloudGroup = new THREE.Group();
-  const cloudMat = new THREE.MeshPhongMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.85 });
+  // Clouds
   for (let i = 0; i < 6; i++) {
-    const cloudCluster = new THREE.Group();
+    const cloudGroup = new THREE.Group();
+    const cloudMat = new THREE.MeshPhongMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.85 });
     for (let j = 0; j < 4; j++) {
       const cloudPart = new THREE.Mesh(
         new THREE.SphereGeometry(0.5 + Math.random() * 0.8, 8, 6),
@@ -1049,33 +826,60 @@ function initScene() {
       );
       cloudPart.position.set(j * 0.7, Math.random() * 0.3, Math.random() * 0.3);
       cloudPart.scale.y = 0.5;
-      cloudCluster.add(cloudPart);
+      cloudGroup.add(cloudPart);
     }
-    cloudCluster.position.set(
-      (Math.random() - 0.5) * 50,
+    cloudGroup.position.set(
+      (Math.random() - 0.5) * 30,
       12 + Math.random() * 5,
       -10 - Math.random() * 10
     );
-    cloudCluster.userData.originalX = cloudCluster.position.x;
-    cloudGroup.add(cloudCluster);
+    scene.add(cloudGroup);
   }
-  scene.add(cloudGroup);
-  scene.userData.clouds = cloudGroup;
 
   // Jack
   jack = createJack();
-  jack.position.set(0, 0, 0);
+  jack.position.set(0, 0, 6);
   jack.castShadow = true;
   scene.add(jack);
 
-  // Initialize chunks
-  stations = [];
-  updateWorld();
+  // Stations
+  const stationConfigs = [
+    { type: 'tree', pos: [-4, 0, 2] },
+    { type: 'rocks', pos: [3, 0, -1] },
+    { type: 'grass', pos: [-2, 0, -4] },
+    { type: 'tree', pos: [5, 0, 3] },
+    { type: 'rocks', pos: [-5, 0, -2] },
+    { type: 'grass', pos: [1, 0, -6] },
+    { type: 'tree', pos: [-1, 0, 5] },
+    { type: 'rocks', pos: [6, 0, -5] },
+  ];
 
-  // Collect all stations from chunks
-  for (let chunk of chunks.values()) {
-    stations.push(...chunk.objects);
-  }
+  stationConfigs.forEach(cfg => {
+    let obj;
+    if (cfg.type === 'tree') obj = createTree(1.8 + Math.random() * 0.5);
+    else if (cfg.type === 'rocks') obj = createRockPile();
+    else obj = createGrassClump();
+
+    obj.position.set(...cfg.pos);
+    obj.castShadow = true;
+    scene.add(obj);
+
+    const marker = createInteractionMarker();
+    marker.position.set(cfg.pos[0], 0.02, cfg.pos[2]);
+    scene.add(marker);
+
+    stations.push({
+      object: obj,
+      marker: marker,
+      position: new THREE.Vector3(...cfg.pos),
+      type: cfg.type,
+      completed: false,
+      dinoCount: Math.floor(Math.random() * 10) + 1
+    });
+  });
+
+  totalStations = stations.length;
+  updateScore();
 
   // ═══════════════════════════════════════
   // INPUT SETUP — both keyboard AND touch
@@ -1095,7 +899,7 @@ function initScene() {
     document.getElementById('controls-hint').textContent = 'Use the joystick to move Jack!';
     initJoystick();
   } else {
-    document.getElementById('controls-hint').textContent = 'Arrow keys or WASD to move Jack';
+    document.getElementById('controls-hint').textContent = 'Arrow keys or WASD to move Jack 🏃‍♂️';
   }
 
   window.addEventListener('resize', onResize);
@@ -1116,6 +920,7 @@ function onResize() {
 // ═══════════════════════════════════════════
 function onGameClick(event) {
   if (gamePhase !== 'counting') return;
+  // Skip if this was a touch (handled separately)
   if (event.sourceCapabilities && event.sourceCapabilities.firesTouchEvents) return;
 
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -1146,7 +951,6 @@ async function countDino(idx) {
   if (dino.counted) return;
   dino.counted = true;
   countedSoFar++;
-  totalDinosCounted++;
 
   dino.group.traverse(child => {
     if (child.isMesh && child.material.color) {
@@ -1159,7 +963,6 @@ async function countDino(idx) {
 
   playCountSound(countedSoFar);
   showCount(countedSoFar);
-  updateScore();
 
   const numberWords = ['one','two','three','four','five','six','seven','eight','nine','ten'];
   await speak(numberWords[countedSoFar - 1], 0.9, 1.2);
@@ -1206,18 +1009,31 @@ async function celebrate() {
   await speak(cheer, 0.85, 1.1);
 
   currentStation.completed = true;
-  encounterNumber++;
+  stationsCompleted++;
+  updateScore();
 
   setTimeout(() => {
     clearDinosaurs();
     hideMessage();
     hideCount();
 
-    gamePhase = 'explore';
-    speak("Great! Let's find more dinosaurs!", 0.85, 1.1);
-    showMessage("Keep exploring! Find more hiding spots!");
-    setTimeout(hideMessage, 3000);
+    if (stationsCompleted >= totalStations) {
+      gameComplete();
+    } else {
+      gamePhase = 'explore';
+      speak("Great! Let's find more dinosaurs!", 0.85, 1.1);
+      showMessage("Keep exploring! Find more hiding spots!");
+      setTimeout(hideMessage, 3000);
+    }
   }, 2500);
+}
+
+async function gameComplete() {
+  gamePhase = 'complete';
+  launchConfetti();
+  showMessage("🎉 You found ALL the dinosaurs! Amazing! 🎉");
+  await speak("You found all the dinosaurs! You are a counting champion! Would you like to play again?", 0.85, 1.1);
+  showTryAgainButtons();
 }
 
 // ═══════════════════════════════════════════
@@ -1274,8 +1090,9 @@ async function enterStation(station) {
   gamePhase = 'reveal';
   playDiscoverSound();
 
-  showMessage("🦕 Dinosaurs are hiding here!");
-  await speak("Oh look! Dinosaurs are hiding here!", 0.85, 1.1);
+  const objectName = station.type === 'tree' ? 'tree' : station.type === 'rocks' ? 'pile of rocks' : 'clump of grass';
+  showMessage("🦕 Something is hiding behind the " + objectName + "!");
+  await speak("Oh look! Something is hiding behind the " + objectName + "!", 0.85, 1.1);
 
   await new Promise(r => setTimeout(r, 800));
   spawnDinosaurs(station);
@@ -1330,9 +1147,23 @@ function updateJack(delta) {
       if (child.name === 'leftArm') child.rotation.x = -Math.sin(jackBobTime) * 0.3;
       if (child.name === 'rightArm') child.rotation.x = Math.sin(jackBobTime) * 0.3;
     });
+
+    jack.position.x = Math.max(-12, Math.min(12, jack.position.x));
+    jack.position.z = Math.max(-12, Math.min(12, jack.position.z));
   }
 
-  updateWorld();
+  if (gamePhase === 'explore') {
+    stations.forEach(station => {
+      if (station.completed) return;
+      const dist = jack.position.distanceTo(station.position);
+      if (dist < 1.8) {
+        enterStation(station);
+      }
+      if (dist < 4) {
+        station.marker.material.opacity = 0.25 + Math.sin(Date.now() * 0.005) * 0.15;
+      }
+    });
+  }
 }
 
 function updateCamera() {
@@ -1344,24 +1175,6 @@ function updateCamera() {
   camera.position.lerp(targetPos, 0.05);
   const lookTarget = new THREE.Vector3(jack.position.x, jack.position.y + 0.5, jack.position.z);
   camera.lookAt(lookTarget);
-
-  // Move directional light to follow Jack
-  const sun = scene.userData.sun;
-  if (sun) {
-    sun.position.set(jack.position.x + 5, 10, jack.position.z + 5);
-  }
-
-  // Wrap clouds
-  const cloudGroup = scene.userData.clouds;
-  if (cloudGroup) {
-    cloudGroup.children.forEach(cloud => {
-      if (cloud.position.x < jack.position.x - 25) {
-        cloud.position.x += 50;
-      } else if (cloud.position.x > jack.position.x + 25) {
-        cloud.position.x -= 50;
-      }
-    });
-  }
 }
 
 function updateDinosaurs(delta) {
@@ -1407,56 +1220,6 @@ function animate() {
 }
 
 // ═══════════════════════════════════════════
-// RENDER DINO PREVIEW (start screen)
-// ═══════════════════════════════════════════
-function renderDinoPreview() {
-  const canvas = document.getElementById('dino-preview');
-  if (!canvas) return;
-
-  const width = 200;
-  const height = 180;
-  canvas.width = width;
-  canvas.height = height;
-
-  const previewScene = new THREE.Scene();
-  // No background — transparent so the green gradient shows through
-
-  const previewCamera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
-  previewCamera.position.set(0, 0.6, 2.2);
-  previewCamera.lookAt(0, 0.25, 0);
-
-  const previewRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
-  previewRenderer.setClearColor(0x000000, 0);
-  previewRenderer.setSize(width, height);
-  previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-  // Lights
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  previewScene.add(ambientLight);
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-  directionalLight.position.set(2, 3, 2);
-  previewScene.add(directionalLight);
-
-  // Brontosaurus — cute green
-  const dino = createBrontosaurus(0x81C784);
-  dino.scale.set(1.0, 1.0, 1.0);
-  dino.position.y = 0;
-  dino.rotation.y = Math.PI; // face the camera
-  previewScene.add(dino);
-
-  // Animate: continuous spin + gentle bob
-  let time = 0;
-  function animatePreview() {
-    time += 0.016;
-    dino.rotation.y += 0.012;
-    dino.position.y = Math.sin(time * 1.5) * 0.06;
-    previewRenderer.render(previewScene, previewCamera);
-    requestAnimationFrame(animatePreview);
-  }
-  animatePreview();
-}
-
-// ═══════════════════════════════════════════
 // GAME CONTROL
 // ═══════════════════════════════════════════
 window.startGame = function() {
@@ -1468,11 +1231,11 @@ window.startGame = function() {
 
   setTimeout(async () => {
     const moveMsg = isTouchDevice
-      ? "Hi Jack! Use the joystick to walk around. Find the dinosaurs hiding behind the plants and rocks!"
-      : "Hi Jack! Use the arrow keys to walk around. Find the dinosaurs hiding behind the plants and rocks!";
+      ? "Hi Jack! Use the joystick to walk around. Find the dinosaurs hiding behind the trees, rocks, and grass!"
+      : "Hi Jack! Use the arrow keys to walk around. Find the dinosaurs hiding behind the trees, rocks, and grass!";
     showMessage(isTouchDevice
       ? "Hi Jack! Use the joystick to find dinosaurs!"
-      : "Hi Jack! Walk to the plants and rocks to find dinosaurs!");
+      : "Hi Jack! Walk to the trees, rocks, or grass to find dinosaurs!");
     await speak(moveMsg, 0.8, 1.1);
     setTimeout(hideMessage, 4000);
   }, 500);
@@ -1487,7 +1250,7 @@ window.tryAgain = function() {
 
   if (currentStation) {
     currentStation.completed = false;
-    totalDinosCounted -= dinoCount;
+    stationsCompleted = Math.max(0, stationsCompleted - 1);
     updateScore();
     gamePhase = 'explore';
     speak("Let's try again! Walk back to the hiding spot!", 0.85, 1.1);
@@ -1502,30 +1265,24 @@ window.startOver = function() {
   hideCount();
   showTapHint(false);
   clearDinosaurs();
-
-  // Reset all stations
+  stationsCompleted = 0;
   stations.forEach(s => {
     s.completed = false;
-    s.dinoCount = (encounterNumber === 0) ? 10 : (1 + Math.floor(Math.random() * 10));
+    s.dinoCount = Math.floor(Math.random() * 10) + 1;
   });
-
-  encounterNumber = 0;
-  totalDinosCounted = 0;
   updateScore();
-  jack.position.set(0, 0, 0);
+  jack.position.set(0, 0, 6);
   gamePhase = 'explore';
   speak("Starting over! Let's find all the dinosaurs again!", 0.85, 1.1);
   showMessage("Starting over! Go find the dinosaurs!");
   setTimeout(hideMessage, 3000);
 };
 
-// Pre-load voices and render dino preview
+// Pre-load voices
 if ('speechSynthesis' in window) {
   speechSynthesis.getVoices();
   speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
 }
-
-renderDinoPreview();
 </script>
 </body>
 </html>
