@@ -50,7 +50,8 @@ canvas { display: block; touch-action: none; }
   font-size: 20px; color: #E8F5E9; margin-bottom: 40px; text-align: center; padding: 0 20px;
 }
 #dino-preview {
-  width: 200px; height: 180px; margin-bottom: 15px;
+  width: 220px; height: 200px; margin-bottom: 15px;
+  background: transparent;
 }
 .btn {
   pointer-events: auto; cursor: pointer;
@@ -1418,35 +1419,37 @@ function renderDinoPreview() {
   canvas.height = height;
 
   const previewScene = new THREE.Scene();
-  previewScene.background = new THREE.Color(0xE8F5E9);
+  // No background — transparent so the green gradient shows through
 
-  const previewCamera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-  previewCamera.position.set(0, 0.5, 1.5);
-  previewCamera.lookAt(0, 0.3, 0);
+  const previewCamera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
+  previewCamera.position.set(0, 0.6, 2.2);
+  previewCamera.lookAt(0, 0.25, 0);
 
   const previewRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+  previewRenderer.setClearColor(0x000000, 0);
   previewRenderer.setSize(width, height);
   previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   // Lights
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   previewScene.add(ambientLight);
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
   directionalLight.position.set(2, 3, 2);
   previewScene.add(directionalLight);
 
-  // Brontosaurus
+  // Brontosaurus — cute green
   const dino = createBrontosaurus(0x81C784);
-  dino.scale.set(0.9, 0.9, 0.9);
+  dino.scale.set(1.0, 1.0, 1.0);
   dino.position.y = 0;
+  dino.rotation.y = Math.PI; // face the camera
   previewScene.add(dino);
 
-  // Animate the preview
+  // Animate: continuous spin + gentle bob
   let time = 0;
   function animatePreview() {
     time += 0.016;
-    dino.rotation.y = Math.sin(time * 0.5) * 0.3;
-    dino.position.y = Math.sin(time * 1.2) * 0.05;
+    dino.rotation.y += 0.012;
+    dino.position.y = Math.sin(time * 1.5) * 0.06;
     previewRenderer.render(previewScene, previewCamera);
     requestAnimationFrame(animatePreview);
   }
