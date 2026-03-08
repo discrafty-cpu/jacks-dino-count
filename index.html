@@ -1032,24 +1032,43 @@ async function celebrate() {
   showMessage("⭐ " + cheer + " ⭐");
   await speak(cheer, 0.85, 1.1);
 
-  currentStation.completed = true;
-  stationsCompleted++;
-  updateScore();
-
-  setTimeout(() => {
-    clearDinosaurs();
-    hideMessage();
-    hideCount();
-
-    if (stationsCompleted >= totalStations) {
-      gameComplete();
-    } else {
+  if (isInitialCount) {
+    // First-time count of 10 complete — now let them explore
+    isInitialCount = false;
+    setTimeout(() => {
+      clearDinosaurs();
+      hideMessage();
+      hideCount();
       gamePhase = 'explore';
-      speak("Great! Let's find more dinosaurs!", 0.85, 1.1);
-      showMessage("Keep exploring! Find more hiding spots!");
-      setTimeout(hideMessage, 3000);
-    }
-  }, 2500);
+      const moveMsg = isTouchDevice
+        ? "Great job! Now use the joystick to find more dinosaurs hiding!"
+        : "Great job! Now use the arrow keys to find more dinosaurs hiding!";
+      speak(moveMsg, 0.85, 1.1);
+      showMessage(isTouchDevice
+        ? "Use the joystick to find more dinos!"
+        : "Walk to the trees, rocks, or grass to find dinos!");
+      setTimeout(hideMessage, 4000);
+    }, 2500);
+  } else {
+    currentStation.completed = true;
+    stationsCompleted++;
+    updateScore();
+
+    setTimeout(() => {
+      clearDinosaurs();
+      hideMessage();
+      hideCount();
+
+      if (stationsCompleted >= totalStations) {
+        gameComplete();
+      } else {
+        gamePhase = 'explore';
+        speak("Great! Let's find more dinosaurs!", 0.85, 1.1);
+        showMessage("Keep exploring! Find more hiding spots!");
+        setTimeout(hideMessage, 3000);
+      }
+    }, 2500);
+  }
 }
 
 async function gameComplete() {
@@ -1246,6 +1265,42 @@ function animate() {
 // ═══════════════════════════════════════════
 // GAME CONTROL
 // ═══════════════════════════════════════════
+let isInitialCount = false;
+
+function spawnInitialDinos() {
+  clearDinosaurs();
+  isInitialCount = true;
+  dinoCount = 10;
+  countedSoFar = 0;
+
+  const dinoColors = [0x81C784, 0x64B5F6, 0xFFB74D, 0xE57373, 0xBA68C8, 0x4DD0E1, 0xFFF176, 0xA1887F, 0xF48FB1, 0x80CBC4];
+  const spacing = 1.2;
+  const totalWidth = 9 * spacing;
+
+  for (let i = 0; i < 10; i++) {
+    const dino = createBrontosaurus(dinoColors[i]);
+    const x = (i * spacing - totalWidth / 2);
+    const z = 2.5 + Math.sin(i * 0.5) * 0.3;
+
+    dino.position.set(x, 0, z);
+    dino.rotation.y = Math.PI;
+    dino.scale.set(0, 0, 0);
+    dino.visible = true;
+    scene.add(dino);
+
+    dinosaurs.push({
+      group: dino,
+      index: i,
+      targetScale: 0.7,
+      counted: false,
+      bouncing: false,
+      shouldGlow: false,
+      fadeIn: 0,
+      fadeDelay: i * 0.12
+    });
+  }
+}
+
 window.startGame = function() {
   document.getElementById('start-screen').style.display = 'none';
   getAudioCtx();
@@ -1254,14 +1309,13 @@ window.startGame = function() {
   animate();
 
   setTimeout(async () => {
-    const moveMsg = isTouchDevice
-      ? "Hi Jack! Use the joystick to walk around. Find the dinosaurs hiding behind the trees, rocks, and grass!"
-      : "Hi Jack! Use the arrow keys to walk around. Find the dinosaurs hiding behind the trees, rocks, and grass!";
-    showMessage(isTouchDevice
-      ? "Hi Jack! Use the joystick to find dinosaurs!"
-      : "Hi Jack! Walk to the trees, rocks, or grass to find dinosaurs!");
-    await speak(moveMsg, 0.8, 1.1);
-    setTimeout(hideMessage, 4000);
+    spawnInitialDinos();
+    showMessage("🦕 Count to ten to find more dinos!");
+    await speak("Count to ten to find more dinos! Tap each dinosaur starting from the left!", 0.8, 1.1);
+    await new Promise(r => setTimeout(r, 1500));
+    gamePhase = 'counting';
+    if (isTouchDevice) showTapHint(true);
+    highlightNextDino();
   }, 500);
 };
 
