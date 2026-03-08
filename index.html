@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Jack's Dinosaur Counting Adventure</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { overflow: hidden; background: #87CEEB; font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; }
-canvas { display: block; }
+html, body { overflow: hidden; background: #87CEEB; font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+canvas { display: block; touch-action: none; }
 
 #ui-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -17,22 +17,22 @@ canvas { display: block; }
 #message-box {
   position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
   background: rgba(255,255,255,0.92); border-radius: 25px;
-  padding: 15px 35px; font-size: 28px; color: #4a3728;
+  padding: 15px 35px; font-size: 24px; color: #4a3728;
   border: 4px solid #8BC34A; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   display: none; text-align: center; z-index: 20;
   pointer-events: auto; max-width: 90%;
 }
 
 #count-display {
-  position: fixed; top: 110px; left: 50%; transform: translateX(-50%);
+  position: fixed; top: 100px; left: 50%; transform: translateX(-50%);
   font-size: 72px; color: #FF6F00; text-shadow: 3px 3px 0 #fff, -1px -1px 0 #fff;
   display: none; z-index: 20; font-weight: bold;
 }
 
 #score-display {
-  position: fixed; top: 20px; right: 30px;
+  position: fixed; top: 20px; right: 20px;
   background: rgba(255,255,255,0.85); border-radius: 20px;
-  padding: 10px 20px; font-size: 20px; color: #4a3728;
+  padding: 8px 16px; font-size: 18px; color: #4a3728;
   border: 3px solid #FFB74D; z-index: 20;
 }
 
@@ -43,11 +43,11 @@ canvas { display: block; }
   z-index: 100; pointer-events: auto;
 }
 #start-screen h1 {
-  font-size: 52px; color: #fff; text-shadow: 3px 3px 0 #2E7D32;
-  margin-bottom: 10px;
+  font-size: 42px; color: #fff; text-shadow: 3px 3px 0 #2E7D32;
+  margin-bottom: 10px; text-align: center; padding: 0 20px;
 }
 #start-screen p {
-  font-size: 24px; color: #E8F5E9; margin-bottom: 40px;
+  font-size: 20px; color: #E8F5E9; margin-bottom: 40px; text-align: center; padding: 0 20px;
 }
 #start-screen .dino-emoji { font-size: 80px; margin-bottom: 20px; }
 .btn {
@@ -55,6 +55,7 @@ canvas { display: block; }
   background: #FF8F00; color: #fff; border: none; border-radius: 30px;
   padding: 18px 50px; font-size: 28px; font-family: inherit;
   box-shadow: 0 6px 0 #E65100; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 .btn:hover { transform: translateY(2px); box-shadow: 0 4px 0 #E65100; }
 .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #E65100; }
@@ -63,6 +64,7 @@ canvas { display: block; }
   background: #43A047; color: #fff; border: none; border-radius: 20px;
   padding: 12px 30px; font-size: 20px; font-family: inherit;
   box-shadow: 0 4px 0 #2E7D32; margin: 5px; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 .btn-small:hover { transform: translateY(2px); box-shadow: 0 2px 0 #2E7D32; }
 
@@ -72,24 +74,55 @@ canvas { display: block; }
 }
 
 #controls-hint {
-  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
   background: rgba(255,255,255,0.8); border-radius: 15px;
-  padding: 10px 25px; font-size: 16px; color: #666;
-  z-index: 20;
+  padding: 8px 20px; font-size: 14px; color: #666;
+  z-index: 20; white-space: nowrap;
 }
 
 #try-again-btns {
-  position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 150px; left: 50%; transform: translateX(-50%);
   display: none; z-index: 20; text-align: center;
+  pointer-events: auto;
+}
+
+/* ════════════════════════════════════════════ */
+/* VIRTUAL JOYSTICK                            */
+/* ════════════════════════════════════════════ */
+#joystick-zone {
+  position: fixed; bottom: 30px; left: 30px;
+  width: 140px; height: 140px; z-index: 30;
+  pointer-events: auto; display: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#joystick-base {
+  position: absolute; top: 0; left: 0;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  border: 3px solid rgba(255,255,255,0.5);
+}
+#joystick-thumb {
+  position: absolute;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.7);
+  border: 3px solid rgba(255,255,255,0.9);
+  top: 40px; left: 40px;
+  transition: none;
+}
+
+/* Tap hint for dinos on touch */
+#tap-hint {
+  position: fixed; bottom: 30px; right: 30px;
+  background: rgba(255,165,0,0.85); color: #fff; border-radius: 20px;
+  padding: 10px 18px; font-size: 16px; z-index: 30;
+  display: none; pointer-events: none;
 }
 
 @keyframes bounce {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-15px); }
-}
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
 }
 </style>
 </head>
@@ -103,20 +136,34 @@ canvas { display: block; }
 </div>
 
 <div id="ui-overlay">
-  <div id="score-display">⭐ Stations: <span id="score">0</span> / <span id="total-stations">0</span></div>
+  <div id="score-display">⭐ <span id="score">0</span> / <span id="total-stations">0</span></div>
   <div id="message-box"></div>
   <div id="count-display"></div>
   <div id="try-again-btns">
     <button class="btn-small" onclick="tryAgain()">Try Again!</button>
     <button class="btn-small" onclick="startOver()">Start Over</button>
   </div>
-  <div id="controls-hint">Arrow keys or WASD to move Jack 🏃‍♂️ Walk up to trees, rocks, or grass!</div>
+  <div id="controls-hint"></div>
 </div>
+
+<!-- Virtual joystick for touch devices -->
+<div id="joystick-zone">
+  <div id="joystick-base"></div>
+  <div id="joystick-thumb"></div>
+</div>
+
+<div id="tap-hint">👆 Tap each dino!</div>
+
 <canvas id="celebration"></canvas>
 
 <script src="https://unpkg.com/three@0.160.0/build/three.module.js" type="module"></script>
 <script type="module">
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+// ═══════════════════════════════════════════
+// TOUCH DETECTION
+// ═══════════════════════════════════════════
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
 // ═══════════════════════════════════════════
 // GLOBALS
@@ -141,11 +188,140 @@ let jackBobTime = 0;
 let dinoClickables = [];
 let glowTime = 0;
 
+// Virtual joystick state
+let joystickActive = false;
+let joystickDX = 0;
+let joystickDZ = 0;
+let joystickTouchId = null;
+const joystickCenterX = 70; // center of 140px base
+const joystickCenterY = 70;
+const joystickMaxDist = 50;
+
 // Audio context for sound effects
 let audioCtx;
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
+}
+
+// ═══════════════════════════════════════════
+// VIRTUAL JOYSTICK (touch devices only)
+// ═══════════════════════════════════════════
+function initJoystick() {
+  const zone = document.getElementById('joystick-zone');
+  const thumb = document.getElementById('joystick-thumb');
+
+  zone.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.changedTouches[0];
+    joystickTouchId = touch.identifier;
+    joystickActive = true;
+    updateJoystickThumb(touch, zone, thumb);
+  }, { passive: false });
+
+  zone.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joystickTouchId) {
+        updateJoystickThumb(e.changedTouches[i], zone, thumb);
+        break;
+      }
+    }
+  }, { passive: false });
+
+  const endJoystick = (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joystickTouchId) {
+        joystickActive = false;
+        joystickDX = 0;
+        joystickDZ = 0;
+        joystickTouchId = null;
+        // Reset thumb to center
+        thumb.style.left = '40px';
+        thumb.style.top = '40px';
+        break;
+      }
+    }
+  };
+
+  zone.addEventListener('touchend', endJoystick, { passive: false });
+  zone.addEventListener('touchcancel', endJoystick, { passive: false });
+}
+
+function updateJoystickThumb(touch, zone, thumb) {
+  const rect = zone.getBoundingClientRect();
+  let localX = touch.clientX - rect.left - joystickCenterX;
+  let localY = touch.clientY - rect.top - joystickCenterY;
+
+  // Clamp to circle
+  const dist = Math.sqrt(localX * localX + localY * localY);
+  if (dist > joystickMaxDist) {
+    localX = (localX / dist) * joystickMaxDist;
+    localY = (localY / dist) * joystickMaxDist;
+  }
+
+  // Move thumb visually
+  thumb.style.left = (joystickCenterX + localX - 30) + 'px'; // 30 = half of 60px thumb
+  thumb.style.top = (joystickCenterY + localY - 30) + 'px';
+
+  // Normalize to -1..1 for movement
+  joystickDX = localX / joystickMaxDist;
+  joystickDZ = localY / joystickMaxDist;
+}
+
+// ═══════════════════════════════════════════
+// TOUCH RAYCASTING (for tapping dinosaurs)
+// ═══════════════════════════════════════════
+function initTouchRaycast() {
+  // Listen for taps on the Three.js canvas
+  // We use 'touchend' so the finger has lifted = intentional tap
+  // We also track if the touch moved (to avoid counting swipes as taps)
+  let touchStartPos = null;
+
+  renderer.domElement.addEventListener('touchstart', (e) => {
+    // Don't intercept if touching the joystick area
+    if (joystickTouchId !== null && e.touches.length > 1) return;
+
+    const touch = e.changedTouches[0];
+    touchStartPos = { x: touch.clientX, y: touch.clientY };
+  }, { passive: true });
+
+  renderer.domElement.addEventListener('touchend', (e) => {
+    if (gamePhase !== 'counting') return;
+
+    const touch = e.changedTouches[0];
+
+    // Only count as tap if finger didn't move much (not a drag/swipe)
+    if (touchStartPos) {
+      const dx = touch.clientX - touchStartPos.x;
+      const dy = touch.clientY - touchStartPos.y;
+      if (Math.sqrt(dx*dx + dy*dy) > 20) return; // was a swipe, ignore
+    }
+
+    // Convert touch position to normalized device coordinates
+    mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+
+    // Check tap on dinosaurs
+    const clickTargets = [];
+    dinosaurs.forEach(d => {
+      d.group.traverse(child => {
+        if (child.isMesh) {
+          child.userData.dinoIndex = d.index;
+          clickTargets.push(child);
+        }
+      });
+    });
+
+    const hits = raycaster.intersectObjects(clickTargets);
+    if (hits.length > 0) {
+      const dinoIdx = hits[0].object.userData.dinoIndex;
+      if (dinoIdx === countedSoFar) {
+        countDino(dinoIdx);
+      }
+    }
+  }, { passive: true });
 }
 
 // ═══════════════════════════════════════════
@@ -161,27 +337,37 @@ function speak(text, rate = 0.85, pitch = 1.1) {
     utter.volume = 1;
     // Try to find a friendly voice
     const voices = speechSynthesis.getVoices();
-    const friendly = voices.find(v => v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Victoria'));
+    const friendly = voices.find(v =>
+      v.name.includes('Samantha') || v.name.includes('Karen') ||
+      v.name.includes('Victoria') || v.name.includes('Moira') ||
+      v.lang.startsWith('en')
+    );
     if (friendly) utter.voice = friendly;
     utter.onend = resolve;
     utter.onerror = resolve;
+    // Safety timeout in case speech never fires onend (common on iOS)
+    const safetyTimer = setTimeout(resolve, Math.max(3000, text.length * 80));
+    utter.onend = () => { clearTimeout(safetyTimer); resolve(); };
     speechSynthesis.speak(utter);
   });
 }
 
 // Sound effects
 function playTone(freq, duration, type = 'sine', volume = 0.3) {
-  const ctx = getAudioCtx();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.value = freq;
-  gain.gain.setValueAtTime(volume, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + duration);
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) { /* audio not available */ }
 }
 
 function playCountSound(n) {
@@ -216,7 +402,7 @@ function showCount(n) {
   el.textContent = n;
   el.style.display = 'block';
   el.style.animation = 'none';
-  el.offsetHeight; // reflow
+  el.offsetHeight;
   el.style.animation = 'bounce 0.4s ease';
 }
 function hideCount() {
@@ -231,6 +417,9 @@ function showTryAgainButtons() {
 }
 function hideTryAgainButtons() {
   document.getElementById('try-again-btns').style.display = 'none';
+}
+function showTapHint(show) {
+  document.getElementById('tap-hint').style.display = show ? 'block' : 'none';
 }
 
 // Confetti
@@ -289,14 +478,14 @@ function createJack() {
 
   // Body
   const bodyGeo = new THREE.CylinderGeometry(0.28, 0.22, 0.7, 8);
-  const bodyMat = new THREE.MeshPhongMaterial({ color: 0x4488CC }); // blue shirt
+  const bodyMat = new THREE.MeshPhongMaterial({ color: 0x4488CC });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   body.position.y = 0.65;
   group.add(body);
 
   // Legs
   const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.45, 6);
-  const legMat = new THREE.MeshPhongMaterial({ color: 0x5D4037 }); // brown pants
+  const legMat = new THREE.MeshPhongMaterial({ color: 0x5D4037 });
   const leftLeg = new THREE.Mesh(legGeo, legMat);
   leftLeg.position.set(-0.12, 0.22, 0);
   leftLeg.name = 'leftLeg';
@@ -318,7 +507,7 @@ function createJack() {
 
   // Arms
   const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.45, 6);
-  const skinMat = new THREE.MeshPhongMaterial({ color: 0xC8956C }); // skin tone
+  const skinMat = new THREE.MeshPhongMaterial({ color: 0xC8956C });
   const leftArm = new THREE.Mesh(armGeo, skinMat);
   leftArm.position.set(-0.38, 0.72, 0);
   leftArm.rotation.z = 0.15;
@@ -332,13 +521,13 @@ function createJack() {
 
   // Head
   const headGeo = new THREE.SphereGeometry(0.25, 12, 10);
-  const headMat = new THREE.MeshPhongMaterial({ color: 0xC8956C }); // light brown skin
+  const headMat = new THREE.MeshPhongMaterial({ color: 0xC8956C });
   const head = new THREE.Mesh(headGeo, headMat);
   head.position.y = 1.22;
   group.add(head);
 
-  // Curly hair - multiple small spheres on top
-  const hairMat = new THREE.MeshPhongMaterial({ color: 0x6D4C2E }); // brown hair
+  // Curly hair
+  const hairMat = new THREE.MeshPhongMaterial({ color: 0x6D4C2E });
   const curlPositions = [
     [0, 0.15, 0], [0.12, 0.13, 0], [-0.12, 0.13, 0],
     [0.08, 0.14, 0.08], [-0.08, 0.14, 0.08],
@@ -394,7 +583,7 @@ function createBrontosaurus(color) {
   const mat = new THREE.MeshPhongMaterial({ color: mainColor });
   const bellyMat = new THREE.MeshPhongMaterial({ color: 0xC8E6C9 });
 
-  // Body (round and chunky = cute)
+  // Body
   const bodyGeo = new THREE.SphereGeometry(0.35, 12, 10);
   const body = new THREE.Mesh(bodyGeo, mat);
   body.scale.set(1.3, 0.9, 1);
@@ -408,25 +597,24 @@ function createBrontosaurus(color) {
   belly.position.set(0, 0.35, 0.1);
   group.add(belly);
 
-  // Neck (curved up)
+  // Neck
   const neckGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.5, 8);
   const neck = new THREE.Mesh(neckGeo, mat);
   neck.position.set(0.3, 0.65, 0);
   neck.rotation.z = -0.5;
   group.add(neck);
 
-  // Head (small and round = cute)
+  // Head
   const headGeo = new THREE.SphereGeometry(0.16, 10, 8);
   const head = new THREE.Mesh(headGeo, mat);
   head.position.set(0.5, 0.9, 0);
   group.add(head);
 
-  // Eyes (big = cute)
+  // Eyes
   const eyeWhiteGeo = new THREE.SphereGeometry(0.055, 8, 6);
   const eyeWhiteMat = new THREE.MeshPhongMaterial({ color: 0xFFFFFF });
   const pupilGeo = new THREE.SphereGeometry(0.032, 8, 6);
   const pupilMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
-
   [0.06, -0.06].forEach(z => {
     const white = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
     white.position.set(0.62, 0.94, z);
@@ -436,7 +624,7 @@ function createBrontosaurus(color) {
     group.add(pupil);
   });
 
-  // Tiny smile
+  // Smile
   const smileCurve = new THREE.EllipseCurve(0, 0, 0.06, 0.03, 0, Math.PI, false, 0);
   const smilePoints = smileCurve.getPoints(12);
   const smileLineGeo = new THREE.BufferGeometry().setFromPoints(
@@ -447,7 +635,7 @@ function createBrontosaurus(color) {
   smileLine.rotation.y = Math.PI / 2;
   group.add(smileLine);
 
-  // Blush spots
+  // Blush
   const blushMat = new THREE.MeshPhongMaterial({ color: 0xF48FB1, transparent: true, opacity: 0.5 });
   [0.08, -0.08].forEach(z => {
     const blush = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), blushMat);
@@ -455,7 +643,7 @@ function createBrontosaurus(color) {
     group.add(blush);
   });
 
-  // Legs (stubby = cute)
+  // Legs
   const legGeo = new THREE.CylinderGeometry(0.07, 0.09, 0.25, 6);
   [[-0.15, 0.12, 0.15], [-0.15, 0.12, -0.15], [0.15, 0.12, 0.15], [0.15, 0.12, -0.15]].forEach(pos => {
     const leg = new THREE.Mesh(legGeo, mat);
@@ -463,20 +651,24 @@ function createBrontosaurus(color) {
     group.add(leg);
   });
 
-  // Tail (cute curve)
+  // Tail
   const tailGeo = new THREE.CylinderGeometry(0.04, 0.09, 0.45, 6);
   const tail = new THREE.Mesh(tailGeo, mat);
   tail.position.set(-0.45, 0.4, 0);
   tail.rotation.z = 0.8;
   group.add(tail);
-
-  // Tail tip
   const tipGeo = new THREE.SphereGeometry(0.05, 6, 6);
   const tip = new THREE.Mesh(tipGeo, mat);
   tip.position.set(-0.62, 0.55, 0);
   group.add(tip);
 
-  // Scale for the scene
+  // Add invisible hit sphere for easier tapping on mobile
+  const hitGeo = new THREE.SphereGeometry(0.6, 8, 6);
+  const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+  const hitSphere = new THREE.Mesh(hitGeo, hitMat);
+  hitSphere.position.set(0, 0.4, 0);
+  group.add(hitSphere);
+
   group.scale.set(0.7, 0.7, 0.7);
   return group;
 }
@@ -486,13 +678,11 @@ function createBrontosaurus(color) {
 // ═══════════════════════════════════════════
 function createTree(height = 2) {
   const group = new THREE.Group();
-  // Trunk
   const trunkGeo = new THREE.CylinderGeometry(0.12, 0.18, height * 0.5, 8);
   const trunkMat = new THREE.MeshPhongMaterial({ color: 0x795548 });
   const trunk = new THREE.Mesh(trunkGeo, trunkMat);
   trunk.position.y = height * 0.25;
   group.add(trunk);
-  // Foliage layers
   const leafMat = new THREE.MeshPhongMaterial({ color: 0x4CAF50 });
   [0, 0.3, 0.55].forEach((offset, i) => {
     const r = 0.7 - i * 0.15;
@@ -508,7 +698,6 @@ function createRockPile() {
   const group = new THREE.Group();
   const rockMat = new THREE.MeshPhongMaterial({ color: 0x9E9E9E });
   const rockMat2 = new THREE.MeshPhongMaterial({ color: 0x757575 });
-  // Several rocks clustered
   [[0, 0.2, 0, 0.3], [0.25, 0.15, 0.1, 0.22], [-0.2, 0.15, 0.15, 0.2],
    [0.1, 0.12, -0.2, 0.18], [-0.15, 0.1, -0.15, 0.15]].forEach((r, i) => {
     const geo = new THREE.SphereGeometry(r[3], 7, 6);
@@ -535,7 +724,6 @@ function createGrassClump() {
     blade.rotation.x = (Math.random() - 0.5) * 0.3;
     group.add(blade);
   }
-  // Add some flowers
   const flowerColors = [0xE91E63, 0xFFEB3B, 0x9C27B0, 0xFF5722];
   for (let i = 0; i < 3; i++) {
     const flowerMat = new THREE.MeshPhongMaterial({ color: flowerColors[Math.floor(Math.random() * flowerColors.length)] });
@@ -548,7 +736,6 @@ function createGrassClump() {
 }
 
 function createInteractionMarker() {
-  // A subtle ring on the ground showing interaction zone
   const geo = new THREE.RingGeometry(1.3, 1.5, 24);
   const mat = new THREE.MeshBasicMaterial({ color: 0xFFEB3B, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(geo, mat);
@@ -566,12 +753,10 @@ function initScene() {
   scene.fog = new THREE.Fog(0x87CEEB, 25, 50);
   clock = new THREE.Clock();
 
-  // Camera
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.set(0, 8, 10);
   camera.lookAt(0, 0, 0);
 
-  // Renderer
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -613,7 +798,7 @@ function initScene() {
     scene.add(patch);
   }
 
-  // Decorative background trees
+  // Background trees
   for (let i = 0; i < 25; i++) {
     const tree = createTree(1.5 + Math.random() * 2);
     const angle = Math.random() * Math.PI * 2;
@@ -623,7 +808,7 @@ function initScene() {
     scene.add(tree);
   }
 
-  // Sun/cloud decorations in sky
+  // Sun
   const sunGeo = new THREE.SphereGeometry(2, 16, 16);
   const sunMat = new THREE.MeshBasicMaterial({ color: 0xFFF176 });
   const sunMesh = new THREE.Mesh(sunGeo, sunMat);
@@ -657,7 +842,7 @@ function initScene() {
   jack.castShadow = true;
   scene.add(jack);
 
-  // Create stations (interaction points)
+  // Stations
   const stationConfigs = [
     { type: 'tree', pos: [-4, 0, 2] },
     { type: 'rocks', pos: [3, 0, -1] },
@@ -696,11 +881,32 @@ function initScene() {
   totalStations = stations.length;
   updateScore();
 
-  // Input
+  // ═══════════════════════════════════════
+  // INPUT SETUP — both keyboard AND touch
+  // ═══════════════════════════════════════
   window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
   window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+  // Mouse click for desktop
   window.addEventListener('click', onGameClick);
+
+  // Touch raycast for iPad/mobile dino tapping
+  initTouchRaycast();
+
+  // Show joystick on touch devices, keyboard hint on desktop
+  if (isTouchDevice) {
+    document.getElementById('joystick-zone').style.display = 'block';
+    document.getElementById('controls-hint').textContent = 'Use the joystick to move Jack!';
+    initJoystick();
+  } else {
+    document.getElementById('controls-hint').textContent = 'Arrow keys or WASD to move Jack 🏃‍♂️';
+  }
+
   window.addEventListener('resize', onResize);
+
+  // Prevent default touch on canvas (stops iOS scroll/zoom)
+  renderer.domElement.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+  renderer.domElement.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 }
 
 function onResize() {
@@ -710,16 +916,17 @@ function onResize() {
 }
 
 // ═══════════════════════════════════════════
-// GAME CLICK HANDLER
+// GAME CLICK HANDLER (desktop mouse)
 // ═══════════════════════════════════════════
 function onGameClick(event) {
   if (gamePhase !== 'counting') return;
+  // Skip if this was a touch (handled separately)
+  if (event.sourceCapabilities && event.sourceCapabilities.firesTouchEvents) return;
 
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
 
-  // Check click on dinosaurs
   const clickTargets = [];
   dinosaurs.forEach(d => {
     d.group.traverse(child => {
@@ -745,25 +952,21 @@ async function countDino(idx) {
   dino.counted = true;
   countedSoFar++;
 
-  // Flash the counted dino
   dino.group.traverse(child => {
     if (child.isMesh && child.material.color) {
       child.material.emissive = new THREE.Color(0x444400);
     }
   });
 
-  // Bounce it
   const origY = dino.group.position.y;
   dino.bouncing = true;
 
   playCountSound(countedSoFar);
   showCount(countedSoFar);
 
-  // Say the number
   const numberWords = ['one','two','three','four','five','six','seven','eight','nine','ten'];
   await speak(numberWords[countedSoFar - 1], 0.9, 1.2);
 
-  // Remove glow from counted dino
   setTimeout(() => {
     dino.group.traverse(child => {
       if (child.isMesh && child.material.emissive) {
@@ -774,19 +977,17 @@ async function countDino(idx) {
     dino.group.position.y = origY;
   }, 400);
 
-  // Check if all counted
   if (countedSoFar >= dinoCount) {
     gamePhase = 'celebrate';
     hideCount();
+    showTapHint(false);
     await celebrate();
   } else {
-    // Glow next dino
     highlightNextDino();
   }
 }
 
 function highlightNextDino() {
-  // Next dino to count glows
   if (countedSoFar < dinosaurs.length) {
     dinosaurs[countedSoFar].shouldGlow = true;
   }
@@ -807,12 +1008,10 @@ async function celebrate() {
   showMessage("⭐ " + cheer + " ⭐");
   await speak(cheer, 0.85, 1.1);
 
-  // Mark station complete
   currentStation.completed = true;
   stationsCompleted++;
   updateScore();
 
-  // Remove dinos
   setTimeout(() => {
     clearDinosaurs();
     hideMessage();
@@ -849,15 +1048,14 @@ function spawnDinosaurs(station) {
 
   for (let i = 0; i < dinoCount; i++) {
     const dino = createBrontosaurus(dinoColors[i % dinoColors.length]);
-    // Arrange left to right in a gentle arc
     const spacing = 1.2;
     const totalWidth = (dinoCount - 1) * spacing;
     const x = station.position.x + (i * spacing - totalWidth / 2);
     const z = station.position.z + 1.5 + Math.sin(i * 0.5) * 0.3;
 
     dino.position.set(x, 0, z);
-    dino.rotation.y = Math.PI; // Face toward camera
-    dino.scale.set(0, 0, 0); // Start invisible for fade-in
+    dino.rotation.y = Math.PI;
+    dino.scale.set(0, 0, 0);
     dino.visible = true;
     scene.add(dino);
 
@@ -897,16 +1095,14 @@ async function enterStation(station) {
   await speak("Oh look! Something is hiding behind the " + objectName + "!", 0.85, 1.1);
 
   await new Promise(r => setTimeout(r, 800));
-
-  // Spawn dinos with fade-in
   spawnDinosaurs(station);
-
-  // Wait for fade in
   await new Promise(r => setTimeout(r, 1500 + station.dinoCount * 200));
 
-  showMessage("Can you count the dinosaurs? Touch each one!");
+  const touchMsg = isTouchDevice ? "Tap" : "Click";
+  showMessage("Can you count the dinosaurs? " + touchMsg + " each one!");
   await speak("Can you count the dinosaurs? Touch each one, starting from the left!", 0.8, 1.1);
 
+  if (isTouchDevice) showTapHint(true);
   gamePhase = 'counting';
   highlightNextDino();
 }
@@ -916,30 +1112,35 @@ async function enterStation(station) {
 // ═══════════════════════════════════════════
 function updateJack(delta) {
   let dx = 0, dz = 0;
+
+  // Keyboard input
   if (keys['arrowup'] || keys['w']) dz -= 1;
   if (keys['arrowdown'] || keys['s']) dz += 1;
   if (keys['arrowleft'] || keys['a']) dx -= 1;
   if (keys['arrowright'] || keys['d']) dx += 1;
 
-  const moving = dx !== 0 || dz !== 0;
+  // Joystick input (adds to keyboard, so both work)
+  if (joystickActive) {
+    dx += joystickDX;
+    dz += joystickDZ;
+  }
+
+  const moving = Math.abs(dx) > 0.1 || Math.abs(dz) > 0.1;
 
   if (moving && (gamePhase === 'explore' || gamePhase === 'counting')) {
     const len = Math.sqrt(dx*dx + dz*dz);
-    dx /= len; dz /= len;
+    if (len > 1) { dx /= len; dz /= len; }
 
     jack.position.x += dx * JACK_SPEED * delta;
     jack.position.z += dz * JACK_SPEED * delta;
 
-    // Face direction of movement
     jackAngle = Math.atan2(dx, dz);
     jack.rotation.y = jackAngle;
 
-    // Bob animation
     jackBobTime += delta * 10;
     const bob = Math.sin(jackBobTime) * 0.05;
     jack.position.y = bob > 0 ? bob : 0;
 
-    // Leg animation
     jack.children.forEach(child => {
       if (child.name === 'leftLeg') child.rotation.x = Math.sin(jackBobTime) * 0.4;
       if (child.name === 'rightLeg') child.rotation.x = -Math.sin(jackBobTime) * 0.4;
@@ -947,12 +1148,10 @@ function updateJack(delta) {
       if (child.name === 'rightArm') child.rotation.x = Math.sin(jackBobTime) * 0.3;
     });
 
-    // Clamp to play area
     jack.position.x = Math.max(-12, Math.min(12, jack.position.x));
     jack.position.z = Math.max(-12, Math.min(12, jack.position.z));
   }
 
-  // Check proximity to stations
   if (gamePhase === 'explore') {
     stations.forEach(station => {
       if (station.completed) return;
@@ -960,7 +1159,6 @@ function updateJack(delta) {
       if (dist < 1.8) {
         enterStation(station);
       }
-      // Pulse marker when close
       if (dist < 4) {
         station.marker.material.opacity = 0.25 + Math.sin(Date.now() * 0.005) * 0.15;
       }
@@ -982,7 +1180,6 @@ function updateCamera() {
 function updateDinosaurs(delta) {
   glowTime += delta;
   dinosaurs.forEach(d => {
-    // Fade in
     if (d.fadeIn < 1) {
       d.fadeDelay -= delta;
       if (d.fadeDelay <= 0) {
@@ -992,7 +1189,6 @@ function updateDinosaurs(delta) {
       }
     }
 
-    // Glow effect for next-to-count dino
     if (d.shouldGlow && !d.counted) {
       const glow = (Math.sin(glowTime * 4) * 0.5 + 0.5) * 0.3;
       d.group.traverse(child => {
@@ -1002,12 +1198,10 @@ function updateDinosaurs(delta) {
       });
     }
 
-    // Bounce when counted
     if (d.bouncing) {
       d.group.position.y = 0.15 + Math.abs(Math.sin(Date.now() * 0.01)) * 0.2;
     }
 
-    // Idle animation - gentle sway
     if (!d.counted && !d.bouncing && d.fadeIn >= 1) {
       d.group.position.y = Math.sin(Date.now() * 0.002 + d.index) * 0.03;
     }
@@ -1030,15 +1224,19 @@ function animate() {
 // ═══════════════════════════════════════════
 window.startGame = function() {
   document.getElementById('start-screen').style.display = 'none';
-  getAudioCtx(); // init audio on user gesture
-  // Load voices
+  getAudioCtx();
   speechSynthesis.getVoices();
   initScene();
   animate();
 
   setTimeout(async () => {
-    showMessage("Hi Jack! Walk to the trees, rocks, or grass to find dinosaurs!");
-    await speak("Hi Jack! Use the arrow keys to walk around. Find the dinosaurs hiding behind the trees, rocks, and grass!", 0.8, 1.1);
+    const moveMsg = isTouchDevice
+      ? "Hi Jack! Use the joystick to walk around. Find the dinosaurs hiding behind the trees, rocks, and grass!"
+      : "Hi Jack! Use the arrow keys to walk around. Find the dinosaurs hiding behind the trees, rocks, and grass!";
+    showMessage(isTouchDevice
+      ? "Hi Jack! Use the joystick to find dinosaurs!"
+      : "Hi Jack! Walk to the trees, rocks, or grass to find dinosaurs!");
+    await speak(moveMsg, 0.8, 1.1);
     setTimeout(hideMessage, 4000);
   }, 500);
 };
@@ -1047,6 +1245,7 @@ window.tryAgain = function() {
   hideTryAgainButtons();
   hideMessage();
   hideCount();
+  showTapHint(false);
   clearDinosaurs();
 
   if (currentStation) {
@@ -1064,6 +1263,7 @@ window.startOver = function() {
   hideTryAgainButtons();
   hideMessage();
   hideCount();
+  showTapHint(false);
   clearDinosaurs();
   stationsCompleted = 0;
   stations.forEach(s => {
