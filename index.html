@@ -892,16 +892,17 @@ function initScene() {
   jack.castShadow = true;
   scene.add(jack);
 
-  // Stations — all far from Jack's start (z=16) and dino line (z=8)
+  // Stations — compact cluster, all reachable from Jack (z=16)
+  // Dino count line is at z=8, so stations start at z=2 and below
   const stationConfigs = [
-    { type: 'tree', pos: [-8, 0, -6] },
-    { type: 'rocks', pos: [8, 0, -12] },
-    { type: 'grass', pos: [-4, 0, -18] },
-    { type: 'tree', pos: [11, 0, -4] },
-    { type: 'rocks', pos: [-11, 0, -14] },
-    { type: 'grass', pos: [4, 0, -24] },
-    { type: 'tree', pos: [-3, 0, -28] },
-    { type: 'rocks', pos: [10, 0, -20] },
+    { type: 'tree', pos: [-6, 0, 1] },
+    { type: 'rocks', pos: [6, 0, -2] },
+    { type: 'grass', pos: [-3, 0, -6] },
+    { type: 'tree', pos: [8, 0, -8] },
+    { type: 'rocks', pos: [-8, 0, -5] },
+    { type: 'grass', pos: [3, 0, -11] },
+    { type: 'tree', pos: [-5, 0, -12] },
+    { type: 'rocks', pos: [7, 0, -14] },
   ];
 
   stationConfigs.forEach(cfg => {
