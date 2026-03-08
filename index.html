@@ -584,15 +584,14 @@ function createJack() {
     group.add(eye);
   });
 
-  // Smile
-  const smileShape = new THREE.Shape();
-  smileShape.absarc(0, 0, 0.08, Math.PI * 0.1, Math.PI * 0.9, false);
-  const smileGeo = new THREE.ShapeGeometry(smileShape);
-  const smileMat = new THREE.MeshBasicMaterial({ color: 0xCC4444, side: THREE.DoubleSide });
-  const smile = new THREE.Mesh(smileGeo, smileMat);
-  smile.position.set(0, 1.16, 0.245);
-  smile.rotation.z = Math.PI;
-  group.add(smile);
+  // Smile — thin curved line, not a filled shape
+  const smileCurve = new THREE.EllipseCurve(0, 0, 0.08, 0.05, Math.PI * 0.15, Math.PI * 0.85, false, 0);
+  const smilePoints = smileCurve.getPoints(16);
+  const smileGeo = new THREE.BufferGeometry().setFromPoints(smilePoints);
+  const smileLine = new THREE.Line(smileGeo, new THREE.LineBasicMaterial({ color: 0x5D3A1A, linewidth: 2 }));
+  smileLine.position.set(0, 1.15, 0.25);
+  smileLine.rotation.z = Math.PI;
+  group.add(smileLine);
 
   group.position.y = 0;
   return group;
@@ -1061,11 +1060,11 @@ async function celebrate() {
   launchConfetti();
 
   const cheers = [
-    "Wonderful! You counted them all!",
-    "Amazing job! You're a counting star!",
-    "Hooray! You did it!",
-    "Fantastic counting!",
-    "You're so smart! Great job!"
+    "Nice job counting!",
+    "Great counting! You got them all!",
+    "Hooray! All the dinos are counted!",
+    "Wonderful counting!",
+    "That was perfect counting!"
   ];
   const cheer = cheers[Math.floor(Math.random() * cheers.length)];
   showMessage(cheer);
@@ -1113,8 +1112,8 @@ async function celebrate() {
 async function gameComplete() {
   gamePhase = 'complete';
   launchConfetti();
-  showMessage("You found ALL the dinosaurs! Amazing!");
-  await speak("You found all the dinosaurs! You are a counting champion! Would you like to play again?", 0.85, 1.1);
+  showMessage("You found all the dinosaurs! Nice counting!");
+  await speak("You found all the dinosaurs! That was great counting! Would you like to play again?", 0.85, 1.1);
   showTryAgainButtons();
 }
 
