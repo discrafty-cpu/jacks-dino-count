@@ -570,6 +570,47 @@ function createJack() {
   smile.rotation.z = Math.PI;
   group.add(smile);
 
+  // Hexagonal hat with alternating blue and red panels
+  const hatY = 1.45;
+  const hatRadius = 0.19;
+  const hatHeight = 0.22;
+  const blueC = [0.15, 0.35, 0.9];
+  const redC = [0.88, 0.12, 0.12];
+
+  // Hat crown (hexagonal cylinder)
+  const crownGeo = new THREE.CylinderGeometry(hatRadius * 0.75, hatRadius, hatHeight, 6).toNonIndexed();
+  const crownPos = crownGeo.getAttribute('position');
+  const crownColors = new Float32Array(crownPos.count * 3);
+  for (let i = 0; i < crownPos.count; i++) {
+    const c = (i < 36)
+      ? ((Math.floor(i / 6) % 2 === 0) ? blueC : redC)
+      : ((Math.floor((i - 36) / 3) % 2 === 0) ? blueC : redC);
+    crownColors[i * 3] = c[0];
+    crownColors[i * 3 + 1] = c[1];
+    crownColors[i * 3 + 2] = c[2];
+  }
+  crownGeo.setAttribute('color', new THREE.BufferAttribute(crownColors, 3));
+  const crown = new THREE.Mesh(crownGeo, new THREE.MeshPhongMaterial({ vertexColors: true }));
+  crown.position.y = hatY;
+  group.add(crown);
+
+  // Hat brim (wider hexagonal disc)
+  const brimGeo = new THREE.CylinderGeometry(hatRadius * 1.4, hatRadius * 1.4, 0.03, 6).toNonIndexed();
+  const brimPos = brimGeo.getAttribute('position');
+  const brimColors = new Float32Array(brimPos.count * 3);
+  for (let i = 0; i < brimPos.count; i++) {
+    const c = (i < 36)
+      ? ((Math.floor(i / 6) % 2 === 0) ? redC : blueC)
+      : ((Math.floor((i - 36) / 3) % 2 === 0) ? redC : blueC);
+    brimColors[i * 3] = c[0];
+    brimColors[i * 3 + 1] = c[1];
+    brimColors[i * 3 + 2] = c[2];
+  }
+  brimGeo.setAttribute('color', new THREE.BufferAttribute(brimColors, 3));
+  const brim = new THREE.Mesh(brimGeo, new THREE.MeshPhongMaterial({ vertexColors: true }));
+  brim.position.y = hatY - hatHeight / 2;
+  group.add(brim);
+
   group.position.y = 0;
   return group;
 }
