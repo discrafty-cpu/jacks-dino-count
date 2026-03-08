@@ -49,7 +49,7 @@ canvas { display: block; touch-action: none; }
 #start-screen p {
   font-size: 20px; color: #E8F5E9; margin-bottom: 40px; text-align: center; padding: 0 20px;
 }
-#start-screen .dino-emoji { font-size: 80px; margin-bottom: 20px; }
+#dino-preview { width: 280px; height: 260px; margin-bottom: 15px; background: transparent; }
 .btn {
   pointer-events: auto; cursor: pointer;
   background: #FF8F00; color: #fff; border: none; border-radius: 30px;
@@ -129,7 +129,7 @@ canvas { display: block; touch-action: none; }
 <body>
 
 <div id="start-screen">
-  <div class="dino-emoji">🦕</div>
+  <canvas id="dino-preview"></canvas>
   <h1>Jack's Dino Count!</h1>
   <p>Help Jack count the dinosaurs hiding in the meadow!</p>
   <button class="btn" onclick="startGame()">Let's Play!</button>
@@ -867,20 +867,20 @@ function initScene() {
 
   // Jack
   jack = createJack();
-  jack.position.set(0, 0, 6);
+  jack.position.set(0, 0, 16);
   jack.castShadow = true;
   scene.add(jack);
 
-  // Stations
+  // Stations — all far from Jack's start (z=16) and dino line (z=8)
   const stationConfigs = [
-    { type: 'tree', pos: [-4, 0, 2] },
-    { type: 'rocks', pos: [3, 0, -1] },
-    { type: 'grass', pos: [-2, 0, -4] },
-    { type: 'tree', pos: [5, 0, 3] },
-    { type: 'rocks', pos: [-5, 0, -2] },
-    { type: 'grass', pos: [1, 0, -6] },
-    { type: 'tree', pos: [-1, 0, 5] },
-    { type: 'rocks', pos: [6, 0, -5] },
+    { type: 'tree', pos: [-8, 0, -6] },
+    { type: 'rocks', pos: [8, 0, -12] },
+    { type: 'grass', pos: [-4, 0, -18] },
+    { type: 'tree', pos: [11, 0, -4] },
+    { type: 'rocks', pos: [-11, 0, -14] },
+    { type: 'grass', pos: [4, 0, -24] },
+    { type: 'tree', pos: [-3, 0, -28] },
+    { type: 'rocks', pos: [10, 0, -20] },
   ];
 
   stationConfigs.forEach(cfg => {
@@ -1291,32 +1291,36 @@ function spawnInitialDinos() {
   countedSoFar = 0;
 
   // Build a circular deck for Jack to stand on
-  const deckGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.08, 12);
+  const deckGeo = new THREE.CylinderGeometry(1.4, 1.4, 0.08, 12);
   const deckMat = new THREE.MeshPhongMaterial({ color: 0xD7CCC8 });
   const deck = new THREE.Mesh(deckGeo, deckMat);
-  deck.position.set(0, 0.04, 6);
+  deck.position.set(0, 0.04, 16);
   scene.add(deck);
-  // Deck rim
-  const rimGeo = new THREE.TorusGeometry(1.2, 0.06, 8, 24);
+  const rimGeo = new THREE.TorusGeometry(1.4, 0.06, 8, 24);
   const rimMat = new THREE.MeshPhongMaterial({ color: 0x8D6E63 });
   const rim = new THREE.Mesh(rimGeo, rimMat);
   rim.rotation.x = -Math.PI / 2;
-  rim.position.set(0, 0.08, 6);
+  rim.position.set(0, 0.08, 16);
   scene.add(rim);
 
+  // Turn Jack to face the dinos (toward -z)
+  jack.rotation.y = Math.PI;
+
   const dinoColors = [0x81C784, 0x64B5F6, 0xFFB74D, 0xE57373, 0xBA68C8, 0x4DD0E1, 0xFFF176, 0xA1887F, 0xF48FB1, 0x80CBC4];
-  const radius = 4.5;
+
+  // Spread 10 dinos in a wide line in front of Jack, all clearly visible
+  const spacing = 1.8;
+  const totalWidth = 9 * spacing;
+  const dinoZ = 8; // well in front of Jack (z=8 vs Jack z=16), clear open space
 
   for (let i = 0; i < 10; i++) {
     const dino = createBrontosaurus(dinoColors[i]);
-    // Arrange in semicircle in front of Jack (visible from camera behind)
-    const angle = Math.PI * 0.15 + (Math.PI * 0.7) * (i / 9);
-    const x = Math.cos(angle) * radius;
-    const z = 6 - Math.sin(angle) * radius;
+    const x = (i * spacing - totalWidth / 2);
+    const z = dinoZ + Math.sin(i * 0.7) * 0.4;
 
     dino.position.set(x, 0, z);
-    // Face toward Jack
-    dino.rotation.y = Math.atan2(0 - x, 6 - z);
+    // Face toward camera (so we see their cute faces)
+    dino.rotation.y = Math.PI;
     dino.scale.set(0, 0, 0);
     dino.visible = true;
     scene.add(dino);
@@ -1394,6 +1398,47 @@ if ('speechSynthesis' in window) {
   speechSynthesis.getVoices();
   speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
 }
+
+// 3D Dino preview on start screen
+function renderDinoPreview() {
+  const canvas = document.getElementById('dino-preview');
+  if (!canvas) return;
+  const width = 280;
+  const height = 260;
+  canvas.width = width * Math.min(window.devicePixelRatio, 2);
+  canvas.height = height * Math.min(window.devicePixelRatio, 2);
+
+  const previewScene = new THREE.Scene();
+  const previewCamera = new THREE.PerspectiveCamera(30, width / height, 0.1, 100);
+  previewCamera.position.set(0, 0.8, 3.5);
+  previewCamera.lookAt(0, 0.3, 0);
+
+  const previewRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  previewRenderer.setClearColor(0x000000, 0);
+  previewRenderer.setSize(width, height);
+  previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  previewScene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.6);
+  dl.position.set(2, 3, 2);
+  previewScene.add(dl);
+
+  const dino = createBrontosaurus(0x81C784);
+  dino.scale.set(1.1, 1.1, 1.1);
+  dino.rotation.y = Math.PI;
+  previewScene.add(dino);
+
+  let time = 0;
+  function animatePreview() {
+    time += 0.016;
+    dino.rotation.y += 0.012;
+    dino.position.y = Math.sin(time * 1.5) * 0.06;
+    previewRenderer.render(previewScene, previewCamera);
+    requestAnimationFrame(animatePreview);
+  }
+  animatePreview();
+}
+renderDinoPreview();
 </script>
 </body>
 </html>
