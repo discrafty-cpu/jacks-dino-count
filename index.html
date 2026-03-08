@@ -526,25 +526,49 @@ function createJack() {
   head.position.y = 1.22;
   group.add(head);
 
-  // Curly hair
+  // Curly hair — only front and low side curls (rest hidden by beanie)
   const hairMat = new THREE.MeshPhongMaterial({ color: 0x6D4C2E });
   const curlPositions = [
-    [0, 0.15, 0], [0.12, 0.13, 0], [-0.12, 0.13, 0],
-    [0.08, 0.14, 0.08], [-0.08, 0.14, 0.08],
-    [0.06, 0.12, -0.1], [-0.06, 0.12, -0.1],
-    [0.15, 0.08, -0.05], [-0.15, 0.08, -0.05],
-    [0, 0.14, -0.1], [0.1, 0.1, 0.1], [-0.1, 0.1, 0.1],
-    [0.17, 0.04, 0], [-0.17, 0.04, 0],
-    [0.13, 0.06, 0.1], [-0.13, 0.06, 0.1],
+    [0.1, 0.04, 0.2], [-0.1, 0.04, 0.2],
+    [0.15, 0.02, 0.15], [-0.15, 0.02, 0.15],
+    [0.05, 0.06, 0.22], [-0.05, 0.06, 0.22],
+    [0.18, 0.0, 0.08], [-0.18, 0.0, 0.08],
+    [0.2, -0.02, 0], [-0.2, -0.02, 0],
   ];
   curlPositions.forEach(p => {
     const curl = new THREE.Mesh(
-      new THREE.SphereGeometry(0.06 + Math.random() * 0.03, 6, 5),
+      new THREE.SphereGeometry(0.055 + Math.random() * 0.025, 6, 5),
       hairMat
     );
     curl.position.set(p[0], 1.22 + p[1], p[2]);
     group.add(curl);
   });
+
+  // Beanie — sphere cap covering top of head
+  // Head: y=1.22, radius=0.25. Eyes at y=1.26.
+  // Beanie bottom edge ~y=1.28 (just above eyes)
+  const beanieRadius = 0.27;
+  const beanieGeo = new THREE.SphereGeometry(
+    beanieRadius, 16, 10,
+    0, Math.PI * 2,
+    0, Math.PI * 0.52
+  ).toNonIndexed();
+  const beaniePos = beanieGeo.getAttribute('position');
+  const beanieColors = new Float32Array(beaniePos.count * 3);
+  const blueC = [0.15, 0.35, 0.9];
+  const redC = [0.88, 0.12, 0.12];
+  for (let i = 0; i < beaniePos.count; i++) {
+    const y = beaniePos.getY(i);
+    const stripe = Math.floor((beanieRadius - y) * 12);
+    const c = (stripe % 2 === 0) ? blueC : redC;
+    beanieColors[i * 3] = c[0];
+    beanieColors[i * 3 + 1] = c[1];
+    beanieColors[i * 3 + 2] = c[2];
+  }
+  beanieGeo.setAttribute('color', new THREE.BufferAttribute(beanieColors, 3));
+  const beanie = new THREE.Mesh(beanieGeo, new THREE.MeshPhongMaterial({ vertexColors: true }));
+  beanie.position.y = 1.22;
+  group.add(beanie);
 
   // Eyes
   const eyeGeo = new THREE.SphereGeometry(0.04, 8, 8);
@@ -569,47 +593,6 @@ function createJack() {
   smile.position.set(0, 1.16, 0.245);
   smile.rotation.z = Math.PI;
   group.add(smile);
-
-  // Hexagonal hat with alternating blue and red panels
-  const hatY = 1.38;
-  const hatRadius = 0.27;
-  const hatHeight = 0.32;
-  const blueC = [0.15, 0.35, 0.9];
-  const redC = [0.88, 0.12, 0.12];
-
-  // Hat crown (hexagonal cylinder)
-  const crownGeo = new THREE.CylinderGeometry(hatRadius * 0.75, hatRadius, hatHeight, 6).toNonIndexed();
-  const crownPos = crownGeo.getAttribute('position');
-  const crownColors = new Float32Array(crownPos.count * 3);
-  for (let i = 0; i < crownPos.count; i++) {
-    const c = (i < 36)
-      ? ((Math.floor(i / 6) % 2 === 0) ? blueC : redC)
-      : ((Math.floor((i - 36) / 3) % 2 === 0) ? blueC : redC);
-    crownColors[i * 3] = c[0];
-    crownColors[i * 3 + 1] = c[1];
-    crownColors[i * 3 + 2] = c[2];
-  }
-  crownGeo.setAttribute('color', new THREE.BufferAttribute(crownColors, 3));
-  const crown = new THREE.Mesh(crownGeo, new THREE.MeshPhongMaterial({ vertexColors: true }));
-  crown.position.y = hatY;
-  group.add(crown);
-
-  // Hat brim (wider hexagonal disc)
-  const brimGeo = new THREE.CylinderGeometry(hatRadius * 1.4, hatRadius * 1.4, 0.03, 6).toNonIndexed();
-  const brimPos = brimGeo.getAttribute('position');
-  const brimColors = new Float32Array(brimPos.count * 3);
-  for (let i = 0; i < brimPos.count; i++) {
-    const c = (i < 36)
-      ? ((Math.floor(i / 6) % 2 === 0) ? redC : blueC)
-      : ((Math.floor((i - 36) / 3) % 2 === 0) ? redC : blueC);
-    brimColors[i * 3] = c[0];
-    brimColors[i * 3 + 1] = c[1];
-    brimColors[i * 3 + 2] = c[2];
-  }
-  brimGeo.setAttribute('color', new THREE.BufferAttribute(brimColors, 3));
-  const brim = new THREE.Mesh(brimGeo, new THREE.MeshPhongMaterial({ vertexColors: true }));
-  brim.position.y = hatY - hatHeight / 2;
-  group.add(brim);
 
   group.position.y = 0;
   return group;
